@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/indodax-tapi",
+      "destination": "https://indodax.com/tapi"
+    },
+    {
+      "source": "/indodax-api/(.*)",
+      "destination": "https://indodax.com/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

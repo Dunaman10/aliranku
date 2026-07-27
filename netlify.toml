@@ -1,0 +1,16 @@
+[[redirects]]
+  from = "/indodax-tapi"
+  to = "https://indodax.com/tapi"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/indodax-api/*"
+  to = "https://indodax.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

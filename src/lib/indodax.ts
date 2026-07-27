@@ -57,25 +57,23 @@ export async function fetchPortfolio(
 
   let res: Response | null = null
 
-  // 1. Coba local dev proxy jika di lingkungan development
-  if (import.meta.env.DEV) {
-    try {
-      res = await fetch('/indodax-tapi', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Key: apiKey,
-          Sign: await hmacSha512Hex(body, secret),
-        },
-        body,
-      })
-    } catch {
-      // Abaikan jika dev proxy gagal
-    }
+  // 1. Coba proxy relative path (berfungsi di lokal Vite dev ATAU di production via vercel.json/netlify.toml)
+  try {
+    res = await fetch('/indodax-tapi', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Key: apiKey,
+        Sign: await hmacSha512Hex(body, secret),
+      },
+      body,
+    })
+  } catch {
+    // Abaikan jika gagal (misal di Github Pages yang tidak dukung rewrite)
   }
 
-  // 2. Jika bukan dev atau dev proxy gagal, coba CORS proxies secara berurutan
-  if (!res) {
+  // 2. Jika relative path gagal, coba CORS proxies publik
+  if (!res || !res.ok) {
     for (const makeProxyUrl of proxies) {
       try {
         const proxyUrl = makeProxyUrl('https://indodax.com/tapi')
@@ -120,13 +118,13 @@ export async function fetchPortfolio(
   let tickers: Record<string, { last: string }> = {}
   if (amounts.size > 0) {
     let tRes: Response | null = null
-    if (import.meta.env.DEV) {
-      try {
-        tRes = await fetch('/indodax-api/tickers')
-      } catch {
-        // pass
-      }
+    // Coba relative path (Vite dev / Vercel / Netlify rewrite)
+    try {
+      tRes = await fetch('/indodax-api/tickers')
+    } catch {
+      // pass
     }
+    
     if (!tRes || !tRes.ok) {
       for (const makeProxyUrl of proxies) {
         try {
