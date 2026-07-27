@@ -99,7 +99,13 @@ export async function fetchPortfolio(
 
   const json = await res.json()
   if (json.success !== 1) {
-    throw new Error(json.error ?? 'Indodax menolak permintaan — cek API key.')
+    const err = json.error ?? 'Indodax menolak permintaan.'
+    if (err.toLowerCase().includes('invalid credentials')) {
+      throw new Error(
+        'Kredensial ditolak (API Key/Secret salah, belum aktif, atau Proxy menghapus header). Pastikan Anda mengisi Secret Key secara manual jika scan QR, cek akurasi jam HP Anda, dan pastikan aplikasi ini di-deploy di Vercel/Netlify (bukan Github Pages).',
+      )
+    }
+    throw new Error(err)
   }
   const balance: Record<string, string> = json.return?.balance ?? {}
   const hold: Record<string, string> = json.return?.balance_hold ?? {}
