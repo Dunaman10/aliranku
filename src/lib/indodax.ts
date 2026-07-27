@@ -50,23 +50,55 @@ export async function fetchPortfolio(
   secret: string,
 ): Promise<Portfolio> {
   const body = `method=getInfo&timestamp=${Date.now()}&recvWindow=60000`
-  let res: Response
-  const tapiUrl = import.meta.env.DEV ? '/indodax-tapi' : 'https://corsproxy.io/?' + encodeURIComponent('https://indodax.com/tapi')
-  const tickersUrl = import.meta.env.DEV ? '/indodax-api/tickers' : 'https://corsproxy.io/?' + encodeURIComponent('https://indodax.com/api/tickers')
+  const proxies = [
+    (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ]
 
-  try {
-    res = await fetch(tapiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Key: apiKey,
-        Sign: await hmacSha512Hex(body, secret),
-      },
-      body,
-    })
-  } catch {
+  let res: Response | null = null
+
+  // 1. Coba local dev proxy jika di lingkungan development
+  if (import.meta.env.DEV) {
+    try {
+      res = await fetch('/indodax-tapi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Key: apiKey,
+          Sign: await hmacSha512Hex(body, secret),
+        },
+        body,
+      })
+    } catch {
+      // Abaikan jika dev proxy gagal
+    }
+  }
+
+  // 2. Jika bukan dev atau dev proxy gagal, coba CORS proxies secara berurutan
+  if (!res) {
+    for (const makeProxyUrl of proxies) {
+      try {
+        const proxyUrl = makeProxyUrl('https://indodax.com/tapi')
+        res = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Key: apiKey,
+            Sign: await hmacSha512Hex(body, secret),
+          },
+          body,
+        })
+        if (res.ok) break
+      } catch {
+        // Abaikan jika proxy ini gagal, coba proxy berikutnya
+      }
+    }
+  }
+
+  if (!res || !res.ok) {
     throw new CorsBlockedError()
   }
+
   const json = await res.json()
   if (json.success !== 1) {
     throw new Error(json.error ?? 'Indodax menolak permintaan — cek API key.')
@@ -87,11 +119,30 @@ export async function fetchPortfolio(
   // Harga pasar untuk konversi ke IDR
   let tickers: Record<string, { last: string }> = {}
   if (amounts.size > 0) {
-    try {
-      const tRes = await fetch(tickersUrl)
-      tickers = (await tRes.json()).tickers ?? {}
-    } catch {
-      throw new CorsBlockedError()
+    let tRes: Response | null = null
+    if (import.meta.env.DEV) {
+      try {
+        tRes = await fetch('/indodax-api/tickers')
+      } catch {
+        // pass
+      }
+    }
+    if (!tRes || !tRes.ok) {
+      for (const makeProxyUrl of proxies) {
+        try {
+          tRes = await fetch(makeProxyUrl('https://indodax.com/api/tickers'))
+          if (tRes.ok) break
+        } catch {
+          // pass
+        }
+      }
+    }
+    if (tRes && tRes.ok) {
+      try {
+        tickers = (await tRes.json()).tickers ?? {}
+      } catch {
+        // pass
+      }
     }
   }
   const assets: PortfolioAsset[] = []
