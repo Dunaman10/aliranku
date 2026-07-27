@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link2, RefreshCw, Unlink } from 'lucide-react'
+import { Link2, QrCode, RefreshCw, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { db, getSetting, setSetting, type Account } from '../db'
 import {
@@ -13,6 +13,7 @@ import {
 import { formatIDR } from '../lib/money'
 import { useUI } from '../store'
 import { Card } from './ui'
+import { QRScannerModal } from './QRScannerModal'
 
 /** Integrasi Indodax di Pengaturan (PRD 6.14 — eksplorasi). */
 export default function IndodaxSection() {
@@ -25,6 +26,7 @@ export default function IndodaxSection() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [lastSync, setLastSync] = useState<number | undefined>()
+  const [showQRScanner, setShowQRScanner] = useState(false)
 
   useEffect(() => {
     loadCreds().then((c) => setConnected(!!c))
@@ -45,6 +47,41 @@ export default function IndodaxSection() {
       initialBalance: 0,
       createdAt: Date.now(),
     } as Account)) as number
+  }
+
+  function handleQRScan(data: string) {
+    try {
+      // 1. Coba parse JSON jika format QR Indodax berupa JSON
+      let parsedKey = ''
+      let parsedSecret = ''
+
+      if (data.startsWith('{')) {
+        const json = JSON.parse(data)
+        parsedKey = json.apiKey || json.api_key || json.key || ''
+        parsedSecret = json.secretKey || json.secret_key || json.secret || ''
+      } else if (data.includes('|') || data.includes(':') || data.includes(',')) {
+        // 2. Coba separator populer
+        const parts = data.split(/[|:,]/)
+        if (parts.length >= 2) {
+          parsedKey = parts[0].trim()
+          parsedSecret = parts[1].trim()
+        }
+      } else {
+        // 3. Jika berupa string tunggal (misal API key saja)
+        parsedKey = data.trim()
+      }
+
+      if (parsedKey) setApiKey(parsedKey)
+      if (parsedSecret) setSecret(parsedSecret)
+
+      showToast(
+        parsedKey && parsedSecret
+          ? 'Berhasil membaca API Key & Secret Key dari QR!'
+          : 'Berhasil membaca QR Code!',
+      )
+    } catch {
+      showToast('Gagal membaca format QR Code.')
+    }
   }
 
   async function connectAndSync(creds?: { apiKey: string; secret: string }) {
@@ -125,12 +162,20 @@ export default function IndodaxSection() {
           </>
         ) : (
           <>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Tampilkan nilai portofolio kripto sebagai saldo akun investasi.
-              Buat API key <b>read-only</b> (izin lihat saja) di akun
-              Indodax-mu. Kredensial disimpan terenkripsi, hanya di perangkat
-              ini.
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Tampilkan nilai portofolio kripto sebagai saldo akun investasi.
+                Buat API key <b>read-only</b> (izin lihat saja) di Indodax.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowQRScanner(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-100 dark:bg-teal-950/60 dark:text-teal-300"
+              >
+                <QrCode size={14} /> Scan QR
+              </button>
+            </div>
+
             <input
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value.trim())}
@@ -182,6 +227,13 @@ export default function IndodaxSection() {
           <p className="text-xs text-amber-700 dark:text-amber-400">{message}</p>
         )}
       </Card>
+
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
+      />
     </section>
   )
 }
+
