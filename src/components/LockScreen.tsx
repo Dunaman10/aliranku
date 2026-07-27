@@ -1,17 +1,34 @@
-import { Delete, Lock } from 'lucide-react'
+import { Delete, Fingerprint, Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { verifyPin } from '../lib/pin'
+import { isBiometricSupported, verifyBiometric } from '../lib/bio'
 
-/** Layar kunci PIN saat membuka aplikasi (PRD NFR keamanan). */
+/** Layar kunci PIN & Biometrik saat membuka aplikasi. */
 export default function LockScreen({
   pinHash,
   onUnlock,
+  bioEnabled = false,
 }: {
   pinHash: string
   onUnlock: () => void
+  bioEnabled?: boolean
 }) {
   const [pin, setPin] = useState('')
   const [wrong, setWrong] = useState(false)
+  const [canBio, setCanBio] = useState(false)
+
+  useEffect(() => {
+    if (bioEnabled && isBiometricSupported()) {
+      setCanBio(true)
+      // Auto trigger biometrik saat pertama kali layar kunci terbuka
+      handleBio()
+    }
+  }, [bioEnabled])
+
+  const handleBio = async () => {
+    const ok = await verifyBiometric()
+    if (ok) onUnlock()
+  }
 
   useEffect(() => {
     if (pin.length < 4) return
@@ -40,7 +57,7 @@ export default function LockScreen({
         </span>
         <h1 className="text-lg font-bold">Aliranku terkunci</h1>
         <p className="text-sm text-stone-500 dark:text-stone-400">
-          {wrong ? 'PIN salah — coba lagi, ya.' : 'Masukkan PIN kamu'}
+          {wrong ? 'PIN salah — coba lagi, ya.' : 'Masukkan PIN atau Sidik Jari'}
         </p>
       </div>
       <div className="flex gap-3">
@@ -68,7 +85,17 @@ export default function LockScreen({
             {d}
           </button>
         ))}
-        <span />
+        {canBio ? (
+          <button
+            className={`${btn} flex items-center justify-center text-teal-600 dark:text-teal-400`}
+            onClick={handleBio}
+            aria-label="Masuk dengan Sidik Jari"
+          >
+            <Fingerprint size={28} />
+          </button>
+        ) : (
+          <span />
+        )}
         <button
           className={btn}
           onClick={() => {

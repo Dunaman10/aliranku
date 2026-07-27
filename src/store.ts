@@ -26,9 +26,14 @@ interface UIState {
   /** Pesan singkat non-blocking (mis. peringatan budget) */
   toast: string | null
   showToast: (msg: string) => void
+  /** Status menyembunyikan nominal saldo / angka keuangan */
+  hideAmounts: boolean
+  toggleHideAmounts: () => void
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+
+const HIDE_AMOUNTS_KEY = 'aliranku-hide-amounts'
 
 export const useUI = create<UIState>((set) => ({
   tab: 'home',
@@ -49,6 +54,13 @@ export const useUI = create<UIState>((set) => ({
     set({ toast: msg })
     toastTimer = setTimeout(() => set({ toast: null }), 4500)
   },
+  hideAmounts: localStorage.getItem(HIDE_AMOUNTS_KEY) === 'true',
+  toggleHideAmounts: () =>
+    set((state) => {
+      const next = !state.hideAmounts
+      localStorage.setItem(HIDE_AMOUNTS_KEY, String(next))
+      return { hideAmounts: next }
+    }),
 }))
 
 // Ikuti perubahan tema sistem saat mode "system"

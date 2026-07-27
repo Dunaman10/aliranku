@@ -3,6 +3,7 @@ import {
   Bell,
   Download,
   FileSpreadsheet,
+  Fingerprint,
   Lock,
   Pencil,
   Plus,
@@ -29,6 +30,7 @@ import {
   type Category,
   type CategoryNature,
 } from '../db'
+import { isBiometricSupported, registerBiometric } from '../lib/bio'
 import { computeBalances } from '../lib/balances'
 import { transactionsToCSV } from '../lib/csv'
 import { formatIDR, formatNumber } from '../lib/money'
@@ -643,10 +645,10 @@ export default function Settings() {
         <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
           <Lock size={14} /> Keamanan
         </h2>
-        <Card className="!p-3">
+        <Card className="divide-y divide-stone-100 !p-3 dark:divide-stone-800">
           <button
             onClick={() => setPinSheet(true)}
-            className="flex w-full items-center justify-between text-sm"
+            className="flex w-full items-center justify-between py-1 text-sm"
           >
             <span>Kunci PIN saat membuka aplikasi</span>
             <span
@@ -659,6 +661,47 @@ export default function Settings() {
               {pinHash ? 'Aktif' : 'Nonaktif'}
             </span>
           </button>
+          {pinHash && isBiometricSupported() && (
+            <div className="flex w-full items-center justify-between pt-2 text-sm">
+              <span className="flex items-center gap-1.5">
+                <Fingerprint size={16} className="text-teal-600 dark:text-teal-400" />
+                Masuk dengan Sidik Jari / Biometrik
+              </span>
+              <input
+                type="checkbox"
+                checked={settingMap.get('bioEnabled') === true}
+                onChange={async (e) => {
+                  const checked = e.target.checked
+                  if (checked) {
+                    const ok = await registerBiometric()
+                    if (ok) {
+                      await setSetting('bioEnabled', true)
+                      showToast('Sidik jari / Biometrik berhasil diaktifkan')
+                    } else {
+                      showToast('Gagal mendaftarkan biometrik')
+                    }
+                  } else {
+                    await setSetting('bioEnabled', false)
+                    showToast('Sidik jari / Biometrik dinonaktifkan')
+                  }
+                }}
+                className="size-4 accent-teal-600"
+              />
+            </div>
+          )}
+          {pinHash && (
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('aliranku-unlocked')
+                  window.location.reload()
+                }}
+                className="w-full rounded-xl bg-stone-100 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+              >
+                Kunci Aplikasi Sekarang
+              </button>
+            </div>
+          )}
         </Card>
       </section>
 

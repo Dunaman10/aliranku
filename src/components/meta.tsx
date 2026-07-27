@@ -100,9 +100,9 @@ export const ACCOUNT_TYPES: Record<
   AccountType,
   { label: string; icon: LucideIcon }
 > = {
-  cash: { label: 'Tunai', icon: Wallet },
-  bank: { label: 'Bank', icon: Landmark },
-  ewallet: { label: 'E-Wallet', icon: Smartphone },
+  cash: { label: 'Cash (Fisik)', icon: Wallet },
+  bank: { label: 'Bank (Cashless)', icon: Landmark },
+  ewallet: { label: 'E-Wallet (Cashless)', icon: Smartphone },
   investasi: { label: 'Investasi', icon: TrendingUp },
 }
 

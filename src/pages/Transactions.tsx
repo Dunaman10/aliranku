@@ -6,7 +6,6 @@ import { EmptyState } from '../components/ui'
 import { db } from '../db'
 import { getPeriod, inPeriod } from '../lib/dates'
 import { formatIDR } from '../lib/money'
-
 export default function Transactions() {
   const [offset, setOffset] = useState(0)
   const accounts = useLiveQuery(() => db.accounts.toArray(), [])
@@ -15,8 +14,11 @@ export default function Transactions() {
 
   const data = useMemo(() => {
     if (!accounts || !categories || !txs) return null
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+    const accMap = new Map(accounts.map((a) => [a.id, a]))
     const period = getPeriod('monthly', offset)
     const list = txs.filter((t) => inPeriod(t.date, period))
+    
     let masuk = 0
     let keluar = 0
     for (const t of list) {
@@ -28,8 +30,8 @@ export default function Transactions() {
       list,
       masuk,
       keluar,
-      catMap: new Map(categories.map((c) => [c.id, c])),
-      accMap: new Map(accounts.map((a) => [a.id, a])),
+      catMap,
+      accMap,
     }
   }, [accounts, categories, txs, offset])
 

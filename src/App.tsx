@@ -59,11 +59,19 @@ function BottomNav() {
 
 export default function App() {
   const { tab, sheet, toast } = useUI()
-  // null = masih memuat status PIN; string = terkunci dengan hash tsb
+  // null = tidak terkunci; string = terkunci dengan hash tsb
   const [lockHash, setLockHash] = useState<string | null | undefined>(undefined)
+  const [bioEnabled, setBioEnabled] = useState<boolean>(false)
 
   useEffect(() => {
-    getSetting<string>('pinHash').then((h) => setLockHash(h ?? null))
+    // Jika sesi ini sudah di-unlock, jangan kunci lagi karena sekadar refresh browser
+    if (sessionStorage.getItem('aliranku-unlocked') === 'true') {
+      setLockHash(null)
+    } else {
+      getSetting<string>('pinHash').then((h) => setLockHash(h ?? null))
+    }
+    getSetting<boolean>('bioEnabled').then((b) => setBioEnabled(b === true))
+
     // Minta penyimpanan persisten agar IndexedDB tidak dihapus otomatis
     // saat memori perangkat menipis (kunci arsitektur local-first)
     navigator.storage?.persist?.().catch(() => {})
@@ -75,9 +83,14 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
+  const handleUnlock = () => {
+    sessionStorage.setItem('aliranku-unlocked', 'true')
+    setLockHash(null)
+  }
+
   if (lockHash === undefined) return null
   if (lockHash) {
-    return <LockScreen pinHash={lockHash} onUnlock={() => setLockHash(null)} />
+    return <LockScreen pinHash={lockHash} bioEnabled={bioEnabled} onUnlock={handleUnlock} />
   }
 
   return (

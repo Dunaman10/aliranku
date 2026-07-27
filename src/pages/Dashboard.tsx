@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import BudgetSection from '../components/BudgetSection'
 import GoalsSection from '../components/GoalsSection'
@@ -17,7 +17,7 @@ import { computeInsights, computeScore } from '../lib/score'
 import { useUI } from '../store'
 
 export default function Dashboard() {
-  const setTab = useUI((s) => s.setTab)
+  const { setTab, hideAmounts, toggleHideAmounts } = useUI()
   const accounts = useLiveQuery(() => db.accounts.toArray(), [])
   const categories = useLiveQuery(() => db.categories.toArray(), [])
   const txs = useLiveQuery(() => db.transactions.toArray(), [])
@@ -101,13 +101,22 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="pt-2">
-        <h1 className="text-xl font-bold text-teal-700 dark:text-teal-400">
-          Aliranku
-        </h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
-          {fmtDate(new Date(), 'EEEE, d MMMM yyyy')}
-        </p>
+      <header className="flex items-center justify-between pt-2">
+        <div>
+          <h1 className="text-xl font-bold text-teal-700 dark:text-teal-400">
+            Aliranku
+          </h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            {fmtDate(new Date(), 'EEEE, d MMMM yyyy')}
+          </p>
+        </div>
+        <button
+          onClick={toggleHideAmounts}
+          aria-label={hideAmounts ? 'Tampilkan nominal' : 'Sembunyikan nominal'}
+          className="flex size-9 items-center justify-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+        >
+          {hideAmounts ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
       </header>
 
       {/* Saldo: uang siap pakai & investasi dipisah (PRD 6.3) */}
@@ -120,7 +129,7 @@ export default function Dashboard() {
             <div>
               <p className="text-xs text-teal-100">Uang Siap Pakai</p>
               <p className="text-2xl font-bold tabular-nums">
-                {formatIDR(data.ready)}
+                {formatIDR(data.ready, hideAmounts)}
               </p>
             </div>
             {showAccounts ? (
@@ -132,7 +141,7 @@ export default function Dashboard() {
           <p className="mt-2 text-xs text-teal-100">
             Nilai Investasi{' '}
             <span className="font-semibold text-white">
-              {formatIDR(data.invest)}
+              {formatIDR(data.invest, hideAmounts)}
             </span>
           </p>
         </button>
@@ -142,7 +151,7 @@ export default function Dashboard() {
               <div key={a.id} className="flex justify-between text-sm">
                 <span className="text-teal-100">{a.name}</span>
                 <span className="font-medium tabular-nums">
-                  {formatIDR(data.balances.get(a.id) ?? 0)}
+                  {formatIDR(data.balances.get(a.id) ?? 0, hideAmounts)}
                 </span>
               </div>
             ))}
@@ -159,13 +168,13 @@ export default function Dashboard() {
           <div>
             <p className="text-xs text-stone-500 dark:text-stone-400">Masuk</p>
             <p className="text-sm font-bold text-green-700 dark:text-green-500">
-              {formatIDR(data.masuk)}
+              {formatIDR(data.masuk, hideAmounts)}
             </p>
           </div>
           <div>
             <p className="text-xs text-stone-500 dark:text-stone-400">Keluar</p>
             <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
-              {formatIDR(data.keluar)}
+              {formatIDR(data.keluar, hideAmounts)}
             </p>
           </div>
           <div>
@@ -177,7 +186,7 @@ export default function Dashboard() {
                   : 'text-rose-600 dark:text-rose-400'
               }`}
             >
-              {formatIDR(data.masuk - data.keluar)}
+              {formatIDR(data.masuk - data.keluar, hideAmounts)}
             </p>
           </div>
         </div>

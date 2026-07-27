@@ -6,13 +6,15 @@ const fmt = new Intl.NumberFormat('id-ID', {
 
 const fmtPlain = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
 
-/** 50000 → "Rp 50.000" */
-export function formatIDR(n: number): string {
+/** 50000 → "Rp 50.000" atau "Rp ••••••" jika hidden */
+export function formatIDR(n: number, hidden = false): string {
+  if (hidden) return 'Rp ••••••'
   return fmt.format(n).replace(/ /g, ' ')
 }
 
 /** 50000 → "50.000" (tanpa "Rp") */
-export function formatNumber(n: number): string {
+export function formatNumber(n: number, hidden = false): string {
+  if (hidden) return '••••••'
   return fmtPlain.format(n)
 }
 
