@@ -146,13 +146,18 @@ export default function Dashboard() {
           </p>
         </button>
         {showAccounts && (
-          <div className="mt-3 space-y-1 border-t border-teal-500/50 pt-2">
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-teal-500/50 pt-4">
             {accounts.map((a) => (
-              <div key={a.id} className="flex justify-between text-sm">
-                <span className="text-teal-100">{a.name}</span>
-                <span className="font-medium tabular-nums">
+              <div
+                key={a.id}
+                className="rounded-xl bg-white/10 p-3 shadow-sm backdrop-blur-sm ring-1 ring-white/20"
+              >
+                <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wider text-teal-100/90">
+                  {a.name}
+                </p>
+                <p className="truncate text-sm font-bold tabular-nums tracking-tight text-white">
                   {formatIDR(data.balances.get(a.id) ?? 0, hideAmounts)}
-                </span>
+                </p>
               </div>
             ))}
           </div>
