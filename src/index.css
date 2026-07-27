@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Warna grafik (mengikuti palet tervalidasi; hijau = masuk, merah = keluar) */
+:root {
+  color-scheme: light;
+  --chart-income: #0ca30c;
+  --chart-expense: #e34948;
+  --chart-score: #2a78d6;
+  --chart-grid: #e1e0d9;
+  --chart-muted: #898781;
+
+  --cat-blue: #2a78d6;
+  --cat-orange: #eb6834;
+  --cat-aqua: #1baf7a;
+  --cat-yellow: #eda100;
+  --cat-magenta: #e87ba4;
+  --cat-green: #008300;
+  --cat-violet: #4a3aa7;
+  --cat-red: #e34948;
+  --cat-gray: #898781;
+}
+
+.dark {
+  color-scheme: dark;
+  --chart-income: #0ca30c;
+  --chart-expense: #e66767;
+  --chart-score: #3987e5;
+  --chart-grid: #2c2c2a;
+  --chart-muted: #898781;
+
+  --cat-blue: #3987e5;
+  --cat-orange: #d95926;
+  --cat-aqua: #199e70;
+  --cat-yellow: #c98500;
+  --cat-magenta: #d55181;
+  --cat-green: #008300;
+  --cat-violet: #9085e9;
+  --cat-red: #e66767;
+  --cat-gray: #898781;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-stone-100 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100;
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sembunyikan scrollbar horizontal pada pemilih chip */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
