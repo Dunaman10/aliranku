@@ -51,8 +51,11 @@ export async function fetchPortfolio(
 ): Promise<Portfolio> {
   const body = `method=getInfo&timestamp=${Date.now()}&recvWindow=60000`
   let res: Response
+  const tapiUrl = import.meta.env.DEV ? '/indodax-tapi' : 'https://corsproxy.io/?' + encodeURIComponent('https://indodax.com/tapi')
+  const tickersUrl = import.meta.env.DEV ? '/indodax-api/tickers' : 'https://corsproxy.io/?' + encodeURIComponent('https://indodax.com/api/tickers')
+
   try {
-    res = await fetch('https://indodax.com/tapi', {
+    res = await fetch(tapiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -85,7 +88,7 @@ export async function fetchPortfolio(
   let tickers: Record<string, { last: string }> = {}
   if (amounts.size > 0) {
     try {
-      const tRes = await fetch('https://indodax.com/api/tickers')
+      const tRes = await fetch(tickersUrl)
       tickers = (await tRes.json()).tickers ?? {}
     } catch {
       throw new CorsBlockedError()

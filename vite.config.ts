@@ -42,4 +42,19 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/indodax-tapi': {
+        target: 'https://indodax.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/indodax-tapi/, '/tapi'),
+      },
+      '/indodax-api': {
+        target: 'https://indodax.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/indodax-api/, '/api'),
+      },
+    },
+  },
 })
+
