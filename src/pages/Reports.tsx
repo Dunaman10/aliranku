@@ -1,7 +1,7 @@
 import { addDays, format } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileDown } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ExpenseDonut, IncomeExpenseBars, ScoreLine } from '../components/charts'
 import { catColor } from '../components/meta'
@@ -16,6 +16,7 @@ import {
   type PeriodKind,
 } from '../lib/dates'
 import { formatIDR } from '../lib/money'
+import { exportReportPDF } from '../lib/pdf'
 import { computeScore } from '../lib/score'
 
 interface Bucket {
@@ -170,16 +171,51 @@ export default function Reports() {
       totalKeluar: keluar,
       history,
       hasData: inCur.length > 0,
+      inCur,
     }
   }, [accounts, categories, txs, kind, offset, accountFilter, categoryFilter])
 
   if (!data || !accounts || !categories) return null
   const selisih = data.masuk - data.keluar
 
+  function handleExportPDF() {
+    if (!data || !accounts || !categories) return
+
+    const accName =
+      accountFilter === 'all'
+        ? 'Semua akun'
+        : accounts.find((a) => a.id === accountFilter)?.name
+    const catName =
+      categoryFilter === 'all'
+        ? 'Semua kategori'
+        : categories.find((c) => c.id === categoryFilter)?.name
+
+    exportReportPDF({
+      period: data.period,
+      transactions: data.inCur,
+      accounts,
+      categories,
+      income: data.masuk,
+      expense: data.keluar,
+      accountFilterName: accName,
+      categoryFilterName: catName,
+    })
+  }
+
   return (
     <div className="space-y-4 p-4">
       <header className="pt-2">
-        <h1 className="mb-3 text-xl font-bold">Laporan</h1>
+        <div className="mb-3 flex items-center justify-between">
+          <h1 className="text-xl font-bold">Laporan</h1>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-95"
+            title="Download Laporan PDF"
+          >
+            <FileDown size={15} />
+            <span>Export PDF</span>
+          </button>
+        </div>
         <Segmented
           value={kind}
           onChange={(k) => {
