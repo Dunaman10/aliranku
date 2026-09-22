@@ -1,44 +1,57 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link2, QrCode, RefreshCw, Unlink } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { db, getSetting, setSetting, type Account } from '../db'
 import {
-  clearCreds,
+  Link2,
+  QrCode,
+  RefreshCw,
+  Unlink,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react'
+
+import { useState } from 'react'
+import { db, setSetting, type Account } from '../db'
+import {
   CorsBlockedError,
   fetchPortfolio,
   loadCreds,
   saveCreds,
   syncAccountBalance,
 } from '../lib/indodax'
-import { formatIDR } from '../lib/money'
+import { formatCryptoAmount, formatIDR, formatPercent } from '../lib/money'
+import { useIndodaxLive } from '../lib/useIndodaxLive'
 import { useUI } from '../store'
 import { Card } from './ui'
 import { QRScannerModal } from './QRScannerModal'
 
 /** Integrasi Indodax di Pengaturan (PRD 6.14 — eksplorasi). */
 export default function IndodaxSection() {
-  const { showToast } = useUI()
+  const { showToast, hideAmounts } = useUI()
+  const {
+    connected,
+    isLive,
+    loading: liveLoading,
+    portfolio,
+    lastSync,
+    refreshNow,
+    disconnect: liveDisconnect,
+    setConnectedManual,
+  } = useIndodaxLive()
+
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? []
-  const [connected, setConnected] = useState<boolean | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [secret, setSecret] = useState('')
   const [targetId, setTargetId] = useState<number | 'new'>('new')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const [lastSync, setLastSync] = useState<number | undefined>()
   const [showQRScanner, setShowQRScanner] = useState(false)
-
-  useEffect(() => {
-    loadCreds().then((c) => setConnected(!!c))
-    getSetting<number>('indodaxLastSync').then(setLastSync)
-  }, [])
 
   const investAccounts = accounts.filter((a) => a.type === 'investasi')
 
   async function resolveTargetAccount(): Promise<number> {
     if (targetId !== 'new') return targetId
-    const saved = await getSetting<number>('indodaxAccountId')
-    if (saved != null && accounts.some((a) => a.id === saved)) return saved
+    const saved = await db.settings.get('indodaxAccountId')
+    if (saved && accounts.some((a) => a.id === saved.value))
+      return saved.value as number
     const existing = accounts.find((a) => a.name.toLowerCase() === 'indodax')
     if (existing) return existing.id
     return (await db.accounts.add({
@@ -51,7 +64,6 @@ export default function IndodaxSection() {
 
   function handleQRScan(data: string) {
     try {
-      // 1. Coba parse JSON jika format QR Indodax berupa JSON
       let parsedKey = ''
       let parsedSecret = ''
 
@@ -60,14 +72,12 @@ export default function IndodaxSection() {
         parsedKey = json.apiKey || json.api_key || json.key || ''
         parsedSecret = json.secretKey || json.secret_key || json.secret || ''
       } else if (data.includes('|') || data.includes(':') || data.includes(',')) {
-        // 2. Coba separator populer
         const parts = data.split(/[|:,]/)
         if (parts.length >= 2) {
           parsedKey = parts[0].trim()
           parsedSecret = parts[1].trim()
         }
       } else {
-        // 3. Jika berupa string tunggal (misal API key saja)
         parsedKey = data.trim()
       }
 
@@ -90,17 +100,16 @@ export default function IndodaxSection() {
     try {
       const c = creds ?? (await loadCreds())
       if (!c) throw new Error('Isi API key & secret dulu, ya.')
-      const portfolio = await fetchPortfolio(c.apiKey, c.secret)
+      const p = await fetchPortfolio(c.apiKey, c.secret)
       const accId = await resolveTargetAccount()
       await saveCreds(c)
       await setSetting('indodaxAccountId', accId)
-      await syncAccountBalance(accId, portfolio.totalIdr)
-      setConnected(true)
-      setLastSync(Date.now())
+      await syncAccountBalance(accId, p.totalIdr)
+      setConnectedManual(true)
       setApiKey('')
       setSecret('')
       showToast(
-        `Portofolio Indodax tersinkron: ${formatIDR(portfolio.totalIdr)}.`,
+        `Portofolio Indodax tersinkron: ${formatIDR(p.totalIdr)}.`,
       )
     } catch (e) {
       if (e instanceof CorsBlockedError) {
@@ -118,8 +127,7 @@ export default function IndodaxSection() {
   async function disconnect() {
     if (!confirm('Putuskan koneksi Indodax? Kredensial terenkripsi akan dihapus.'))
       return
-    await clearCreds()
-    setConnected(false)
+    await liveDisconnect()
     setMessage('')
     showToast('Koneksi Indodax diputus.')
   }
@@ -134,23 +142,114 @@ export default function IndodaxSection() {
       <Card className="space-y-3 !p-3">
         {connected ? (
           <>
-            <p className="text-sm">
-              Terhubung ✅
-              {lastSync && (
-                <span className="text-xs text-stone-500 dark:text-stone-400">
-                  {' '}
-                  · sinkron terakhir {new Date(lastSync).toLocaleString('id-ID')}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Terhubung ✅</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  {isLive ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                      Live (update otomatis tiap 15 dtk)
+                    </span>
+                  ) : (
+                    'Sinkronisasi terjadwal'
+                  )}
+                  {lastSync && (
+                    <span>
+                      {' '}
+                      · {new Date(lastSync).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </span>
+                  )}
+                </p>
+              </div>
+              {portfolio && (
+                <span
+                  className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                    portfolio.isProfit24h
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                      : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
+                  }`}
+                >
+                  {portfolio.isProfit24h ? (
+                    <ArrowUpRight size={12} />
+                  ) : (
+                    <ArrowDownRight size={12} />
+                  )}
+                  {formatPercent(portfolio.pnl24hPercent)}
                 </span>
               )}
-            </p>
+            </div>
+
+            {/* Cuplikan Portofolio Singkat */}
+            {portfolio && (
+              <div className="rounded-xl bg-stone-100 p-2.5 dark:bg-stone-800/60 text-xs space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500 dark:text-stone-400">
+                    Total Nilai:
+                  </span>
+                  <span className="font-bold text-stone-900 dark:text-white tabular-nums">
+                    {formatIDR(portfolio.totalIdr, hideAmounts)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-stone-500 dark:text-stone-400">
+                    Kas IDR / Kripto:
+                  </span>
+                  <span className="tabular-nums">
+                    {formatIDR(portfolio.idr, hideAmounts)} /{' '}
+                    {formatIDR(portfolio.cryptoIdr, hideAmounts)}
+                  </span>
+                </div>
+
+                {portfolio.assets.length > 0 && (
+                  <div className="pt-1 border-t border-stone-200 dark:border-stone-700/60 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase text-stone-500">
+                      Aset Koin ({portfolio.assets.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {portfolio.assets.map((a) => (
+                        <span
+                          key={a.code}
+                          className="inline-flex items-center gap-1 rounded-md bg-stone-200/70 px-2 py-0.5 text-[11px] font-medium dark:bg-stone-700"
+                        >
+                          <span className="uppercase font-bold text-teal-600 dark:text-teal-400">
+                            {a.code}
+                          </span>
+                          <span className="tabular-nums">
+                            {formatCryptoAmount(a.amount)}
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold ${
+                              a.isProfit24h
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-rose-600 dark:text-rose-400'
+                            }`}
+                          >
+                            {formatPercent(a.change24h)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
-                onClick={() => connectAndSync()}
-                disabled={busy}
+                onClick={() => refreshNow()}
+                disabled={busy || liveLoading}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                <RefreshCw size={15} className={busy ? 'animate-spin' : ''} />
-                Perbarui saldo
+                <RefreshCw
+                  size={15}
+                  className={busy || liveLoading ? 'animate-spin' : ''}
+                />
+                Perbarui sekarang
               </button>
               <button
                 onClick={disconnect}
@@ -163,6 +262,7 @@ export default function IndodaxSection() {
         ) : (
           <>
             <div className="flex items-start justify-between gap-2">
+
               <p className="text-xs text-stone-500 dark:text-stone-400">
                 Tampilkan nilai portofolio kripto sebagai saldo akun investasi.
                 Buat API key <b>read-only</b> (izin lihat saja) di Indodax.

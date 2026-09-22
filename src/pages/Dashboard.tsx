@@ -6,7 +6,9 @@ import BudgetSection from '../components/BudgetSection'
 import GoalsSection from '../components/GoalsSection'
 import MiniBars from '../components/MiniBars'
 import ScoreCard from '../components/ScoreCard'
+import CryptoPortfolioSection from '../components/CryptoPortfolioSection'
 import { TxRow } from '../components/TxList'
+
 import { Card, EmptyState } from '../components/ui'
 import { db } from '../db'
 import { computeBalances, splitBalances } from '../lib/balances'
@@ -164,7 +166,11 @@ export default function Dashboard() {
         )}
       </Card>
 
+      {/* Portofolio Kripto Realtime & Daftar Koin (PRD 6.14) */}
+      <CryptoPortfolioSection />
+
       {/* Ringkasan bulan berjalan */}
+
       <Card>
         <p className="mb-2 text-xs font-medium text-stone-500 dark:text-stone-400">
           Duitmu bulan ini · {data.monthLabel}

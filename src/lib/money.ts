@@ -31,3 +31,23 @@ export function formatShort(n: number): string {
 function trim(v: number): string {
   return v.toFixed(1).replace('.0', '').replace('.', ',')
 }
+
+/** Format jumlah koin kripto tanpa pembulatan kasar ke 0 (mis. 0,0054321 BTC) */
+export function formatCryptoAmount(amount: number, symbol?: string): string {
+  if (!Number.isFinite(amount)) return symbol ? `0 ${symbol.toUpperCase()}` : '0'
+  const maxDecimals =
+    amount < 0.0001 ? 8 : amount < 0.01 ? 6 : amount < 1 ? 4 : amount < 1000 ? 2 : 0
+  const formatted = amount.toLocaleString('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+  })
+  return symbol ? `${formatted} ${symbol.toUpperCase()}` : formatted
+}
+
+/** Format persentase profit/loss (mis. +5,24% atau -2,10%) */
+export function formatPercent(p: number, includeSign = true): string {
+  if (!Number.isFinite(p)) return '0,00%'
+  const sign = includeSign && p > 0 ? '+' : ''
+  return `${sign}${p.toFixed(2).replace('.', ',')}%`
+}
+

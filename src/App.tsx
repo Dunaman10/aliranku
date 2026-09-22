@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 import Transactions from './pages/Transactions'
 import { useUI, type Tab } from './store'
+import { useIndodaxLive } from './lib/useIndodaxLive'
+
 
 // Laporan memuat Recharts — dipisah agar bundle awal tetap ringan
 const Reports = lazy(() => import('./pages/Reports'))
@@ -75,8 +77,11 @@ export default function App() {
     // Minta penyimpanan persisten agar IndexedDB tidak dihapus otomatis
     // saat memori perangkat menipis (kunci arsitektur local-first)
     navigator.storage?.persist?.().catch(() => {})
+    // Inisialisasi sinkronisasi realtime Indodax jika terhubung
+    useIndodaxLive.getState().init()
     // Catat transaksi rutin yang jatuh tempo (PRD 6.8)
     processRecurring()
+
     // Reminder harian — dicek saat buka & tiap 30 detik selama aplikasi hidup
     checkReminder()
     const timer = setInterval(checkReminder, 30_000)
